@@ -1,3 +1,4 @@
+#include <errno.h>
 #include "kea/kea.h"
 #include "kea_stream_helpers.h"
 
@@ -8,22 +9,26 @@ bool kea_is_stream_invalid(struct kea_stream *stream)
 
 bool kea_stream_write(struct kea_stream *stream, const char *buf, unsigned len)
 {
-    int written;
+    int rc;
+    int written = 0;
     int retries = 3;
     
     if (!stream || !stream->write || !buf || len == 0)
-        return false;
+        return -EINVAL;
 
     while (retries-- > 0 && len > 0) {
-        written = stream->write(stream->metadata, buf, len);
+        rc = stream->write(stream->metadata, buf, len);
         
-        if (written <= 0)
+        if (rc <= 0)
             continue;
         
-        written = MIN(written, len);
-        len -= written;
-        buf += written;
+        written += rc;
+        len -= (rc <= len ? rc : len);
+        buf += rc;
     }
-    
-    return len == 0;
+
+    if (written <= 0 && retries <= 0)
+        return -EBUSY;
+
+    return written;
 }

@@ -1,6 +1,8 @@
 #ifndef __KEA_CMDS_PUBLIC_IF_H
 #define __KEA_CMDS_PUBLIC_IF_H
 
+#include <stdint.h>
+
 enum kea_cmds {
     KEA_CMD_READ = 1,
     KEA_CMD_WRITE = 2,
@@ -40,6 +42,22 @@ struct kea_cmd_all_models_rsp {
     unsigned char rsp_version;
     unsigned char num_models;
     struct kea_rsp_model_meta models[0];
+} __attribute__((packed));
+
+struct kea_cmd_model_attr {
+    unsigned char obj_id;
+    unsigned collection_type: 4;
+    unsigned type: 4;
+    uint16_t size_bytes;
+    unsigned char name_len;
+    char name[0];
+} __attribute__((packed));
+
+struct kea_cmd_get_model_schema {
+    struct kea_rsp_hdr hdr;
+    uint16_t model_id;
+    unsigned char num_attrs;
+    struct kea_cmd_model_attr attrs[0];
 } __attribute__((packed));
 
 bool kea_req_get_all_models(struct kea_stream *stream);

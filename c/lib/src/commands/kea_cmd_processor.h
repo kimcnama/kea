@@ -39,4 +39,13 @@ struct kea_rsp_msg_hdr {
 #define KEA_REQ_MSG_HDR_SZ  sizeof(struct kea_req_msg_hdr)
 #define KEA_RSP_MSG_HDR_SZ  sizeof(struct kea_rsp_msg_hdr)
 
+enum buf_write_status {
+    BUF_WRITE_OK_SPACE_REMAINING = 0,
+    BUF_SEND_WRITE_PARTIAL,
+    BUF_SEND_WRITE_SUCCESS
+};
+
+enum buf_write_status safe_buf_write(
+    char **buf_ptr, const char *end_ptr, const void *src, int data_len, unsigned *offset);
+
 #endif /* __KEA_CMD_PROC_PRIV_IF_H */
