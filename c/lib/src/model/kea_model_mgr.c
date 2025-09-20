@@ -21,14 +21,15 @@ bool kea_model_iter_init(struct kea_model_iter *iter)
 bool kea_model_iter(struct kea_model_iter *iter, struct kea_model_hdr **model)
 {
     struct kea_model_hdr *m;
+    bool is_valid_model;
+    
     if (!iter || iter->cur_idx >= MAX_MODELS)
         return false;
     
-    m = mgr.registered_models[iter->cur_idx];
-    
-    if (m)
-        ++iter->cur_idx;
-    return m != NULL;
+    m = mgr.registered_models[iter->cur_idx++];
+    *model = m;
+    is_valid_model = (m != NULL);
+    return is_valid_model;
 }
 
 unsigned char kea_get_num_registered_models(void)

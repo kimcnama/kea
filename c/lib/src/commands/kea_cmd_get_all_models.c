@@ -6,42 +6,54 @@
 #include "kea/kea_model.h"
 #include "stream/kea_stream_helpers.h"
 #include "commands/kea_cmd_processor.h"
+#include "commands/kea_cmd_defs.h"
 
 #define GET_MODELS_RESP_VERSION     (0)
 
-int kea_req_get_all_models(
-    struct kea_stream *stream, bool do_include_names, unsigned char trans_id, void *buf, unsigned max_buf_len)
+bool kea_req_get_all_models(
+    struct kea_stream *stream, bool do_include_names, unsigned char trans_id)
 {
-    struct kea_cmd_all_models_req *req = (struct kea_cmd_all_models_req *)buf;
+    struct kea_cmd_all_models_req req = {0};
 
-    if (max_buf_len < sizeof(struct kea_cmd_all_models_req))
-        return -ENOMEM;
-
-    if (kea_is_stream_invalid(stream) || !buf)
+    if (kea_is_stream_invalid(stream))
         return -EINVAL;
-    
-    memset(req, 0x0, max_buf_len);
-    req->hdr.version = KEA_PRTOCOL_VERSION;
-    req->hdr.op_code = KEA_CMD_GET_ALL_MODELS;
-    req->hdr.transaction_id = trans_id;
-    req->hdr.len = 0;
-    req->do_include_names = do_include_names ? 1 : 0;
-    return stream->write(stream->metadata, req, sizeof(struct kea_cmd_all_models_req));
+
+    req.hdr.version = KEA_PRTOCOL_VERSION;
+    req.hdr.op_code = KEA_CMD_GET_ALL_MODELS;
+    req.hdr.transaction_id = trans_id;
+    req.hdr.len = 0;
+    req.do_include_names = do_include_names ? 1 : 0;
+    return sizeof(struct kea_cmd_all_models_req) == 
+        kea_stream_write(stream, &req, sizeof(struct kea_cmd_all_models_req));
 }
 
-static void kea_cmd_get_all_models(
+unsigned kea_cmd_get_all_models_decode_rsp(
+    const void *rsp_buf, unsigned resp_len, struct kea_rsp_model_meta **models_info, unsigned max_model_array_size) {
+    
+    char *ptr;
+    struct kea_cmd_all_models_rsp *rsp = (struct kea_cmd_all_models_rsp *)rsp_buf;
+    unsigned num_models = 0;
+    
+    ptr = &rsp_buf[sizeof(rsp->hdr) + sizeof(rsp->rsp_version) + sizeof(rsp->num_models)];
+
+    while (num_models < max_model_array_size && num_models < rsp->num_models) {
+        struct kea_rsp_model_meta *cur_model = (struct kea_rsp_model_meta *)ptr;
+        models_info[num_models++] = cur_model;
+        ptr += sizeof(cur_model->model_id) + sizeof(cur_model->name_len) + cur_model->name_len;
+    }
+    
+    return num_models;
+}
+
+void kea_cmd_get_all_models_proc_req(
     struct kea_stream *rq, const void *req_pkt, unsigned req_len, void *rsp_buf, unsigned max_rsp_buf_len)
 {
-    bool do_include_names;
-    unsigned char payload_len;
-    unsigned char num_models;
+    bool do_include_names, is_ok;
+    unsigned char num_models, str_len;
     struct kea_model_iter it;
     struct kea_model_hdr *model;
-    char *end_ptr = &((char*)rsp_buf)[max_rsp_buf_len];
     char *ptr;
-    unsigned offset;
-    unsigned char str_len;
-    enum buf_write_status status;
+    char *end_ptr = &((char*)rsp_buf)[max_rsp_buf_len];
 
     const struct kea_cmd_all_models_req *req = (const struct kea_cmd_all_models_req *)req_pkt;
     struct kea_cmd_all_models_rsp *rsp = (struct kea_cmd_all_models_rsp *)rsp_buf;
@@ -56,7 +68,7 @@ static void kea_cmd_get_all_models(
     
     rsp->rsp_version = GET_MODELS_RESP_VERSION;
     rsp->num_models = kea_get_num_registered_models();
-    payload_len = sizeof(rsp->rsp_version) + sizeof(rsp->num_models);
+    rsp->hdr.len = sizeof(rsp->rsp_version) + sizeof(rsp->num_models);
 
     ptr = &rsp_buf[sizeof(rsp->hdr) + sizeof(rsp->rsp_version) + sizeof(rsp->num_models)];
 
@@ -66,65 +78,31 @@ static void kea_cmd_get_all_models(
         struct kea_rsp_model_meta *cur_rsp_model = (struct kea_rsp_model_meta *)ptr;
         
         /* add model id */
-        do {
-            status = safe_buf_write(&ptr, end_ptr, &model->model_id, sizeof(cur_rsp_model->model_id), NULL);
-            if (status != BUF_WRITE_OK_SPACE_REMAINING) {
-                /* No space left in buffer */
-                if (!kea_stream_write(rq, rsp_buf, sizeof(rsp->hdr) + payload_len)) {
-                    // Failed to write response
-                    return;
-                }
-
-                payload_len = 0;
-                ptr = &rsp_buf[sizeof(rsp->hdr)];
-                rsp->hdr.seq_num++;
-            }
-        } while (status != BUF_WRITE_OK_SPACE_REMAINING);
+        is_ok = safe_buf_write_and_send(rq, &rsp->hdr, &ptr, end_ptr, &model->model_id, sizeof(cur_rsp_model->model_id));
+        if (!is_ok) {
+            // Failed to write response
+            return;
+        }
 
         /* string length of name */
-        do {
-            str_len = do_include_names ? (char)strlen(model->name) : 0;
-            status = safe_buf_write(&ptr, end_ptr, &str_len, sizeof(cur_rsp_model->name_len), NULL);
-            if (status != BUF_WRITE_OK_SPACE_REMAINING) {
-                /* No space left in buffer */
-                if (!kea_stream_write(rq, rsp_buf, sizeof(rsp->hdr) + payload_len)) {
-                    // Failed to write response
-                    return;
-                }
-
-                payload_len = 0;
-                ptr = &rsp_buf[sizeof(rsp->hdr)];
-                rsp->hdr.seq_num++;
-            }
-        } while (status != BUF_WRITE_OK_SPACE_REMAINING);
+        str_len = do_include_names ? (char)strlen(model->name) : 0;
+        is_ok = safe_buf_write_and_send(rq, &rsp->hdr, &ptr, end_ptr, &str_len, sizeof(cur_rsp_model->name_len));
+        if (!is_ok) {
+            // Failed to write response
+            return;
+        }
 
         /* Add name of model */
         if (do_include_names && str_len > 0) {
-            offset = 0;
-            
-            do {
-                status = safe_buf_write(&ptr, end_ptr, model->name, str_len, &offset);
-                
-                if (status == BUF_SEND_WRITE_PARTIAL) {
-                    payload_len += offset;
-                } else if (status == BUF_SEND_WRITE_SUCCESS) {
-                    payload_len += str_len;
-                }
-                
-                if (status != BUF_WRITE_OK_SPACE_REMAINING) {
-                    /* No space left in buffer */
-                    if (!kea_stream_write(rq, rsp_buf, sizeof(rsp->hdr) + payload_len)) {
-                        // Failed to write response
-                        return;
-                    }
-
-                    payload_len = 0;
-                    ptr = &rsp_buf[sizeof(rsp->hdr)];
-                    rsp->hdr.seq_num++;
-                }
-            } while (status != BUF_WRITE_OK_SPACE_REMAINING);
+            is_ok = safe_buf_write_and_send(rq, &rsp->hdr, &ptr, end_ptr, model->name, str_len);
+            if (!is_ok) {
+                // Failed to write response
+                return;
+            }
         }
-
     }
-    
+    // Final write of any remaining data
+    if (ptr > (char *)&rsp->hdr + sizeof(rsp->hdr)) {
+        (void)kea_stream_write(rq, rsp, rsp->hdr.len + sizeof(rsp->hdr));
+    }
 }

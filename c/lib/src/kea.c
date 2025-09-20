@@ -8,7 +8,9 @@ struct kea_streams {
     struct kea_stream streams[CONFIG_KEA_MAX_NUM_STREAMS];
 } reg_streams = {0};
 
-int kea_register_stream(struct kea_stream *stream)
+static char default_rsp_buf[CONFIG_KEA_MAX_NUM_STREAMS];
+
+int kea_register_stream(struct kea_stream *stream, void *custom_buf, unsigned custom_buf_len)
 {
     if (!stream)
         return -EINVAL;
@@ -17,6 +19,15 @@ int kea_register_stream(struct kea_stream *stream)
         return -EINVAL;
 
     if (reg_streams.num_registered < CONFIG_KEA_MAX_NUM_STREAMS) {
+
+        if (custom_buf && custom_buf_len > 0) {
+            stream->stream_buf = (char *)custom_buf;
+            stream->stream_buf_size = custom_buf_len;
+        } else {
+            stream->stream_buf = default_rsp_buf;
+            stream->stream_buf_size = sizeof(default_rsp_buf);
+        }
+
         memcpy(&reg_streams.streams[reg_streams.num_registered++], stream, sizeof(struct kea_stream));
         return 0;
     } else {

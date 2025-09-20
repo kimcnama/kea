@@ -32,7 +32,7 @@ struct kea_obj_access_hdr;
 
 struct kea_model_hdr {
     unsigned model_id;
-    char *name;
+    const char *name;
     unsigned char hash[MODEL_HASH_SZ];
     unsigned char num_static_objs;
     unsigned char num_dyn_objs;

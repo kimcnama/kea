@@ -19,7 +19,11 @@ set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 # Add your test source files here
-add_executable(my_tests test_main.cpp)
+add_executable(my_tests
+    test_main.cpp
+    test_model_gen.cpp)
+
+target_include_directories(my_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../lib/ ${CMAKE_CURRENT_BINARY_DIR}/lib)
 

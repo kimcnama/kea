@@ -2,6 +2,7 @@
 #define __KEA_CMDS_PUBLIC_IF_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 enum kea_cmds {
     KEA_CMD_READ = 1,
@@ -60,6 +61,10 @@ struct kea_cmd_get_model_schema {
     struct kea_cmd_model_attr attrs[0];
 } __attribute__((packed));
 
-bool kea_req_get_all_models(struct kea_stream *stream);
+bool kea_req_get_all_models(
+    struct kea_stream *stream, bool do_include_names, unsigned char trans_id);
+
+unsigned kea_cmd_get_all_models_decode_rsp(
+    const void *rsp_buf, unsigned resp_len, struct kea_rsp_model_meta **models_info, unsigned max_model_array_size);
 
 #endif /* __KEA_CMDS_PUBLIC_IF_H */

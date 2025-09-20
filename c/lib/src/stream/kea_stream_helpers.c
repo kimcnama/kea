@@ -7,7 +7,7 @@ bool kea_is_stream_invalid(struct kea_stream *stream)
     return !stream || !stream->write || !stream->read;
 }
 
-bool kea_stream_write(struct kea_stream *stream, const char *buf, unsigned len)
+int kea_stream_write(struct kea_stream *stream, const char *buf, unsigned len)
 {
     int rc;
     int written = 0;

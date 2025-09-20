@@ -45,6 +45,9 @@ enum buf_write_status {
     BUF_SEND_WRITE_SUCCESS
 };
 
+bool safe_buf_write_and_send(
+    struct kea_stream *stream, struct kea_rsp_hdr *hdr, char **buf_ptr, const char *end_ptr, const void *src, int data_len);
+
 enum buf_write_status safe_buf_write(
     char **buf_ptr, const char *end_ptr, const void *src, int data_len, unsigned *offset);
 

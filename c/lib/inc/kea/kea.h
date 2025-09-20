@@ -8,11 +8,13 @@
 struct kea_stream {
     char metadata[CONFIG_KEA_STREAM_METADATA_SIZE];
     void *priv_data;
+    char *stream_buf;
+    unsigned stream_buf_size;
     int (*read)(struct kea_stream*, char *buf, unsigned buf_size);
     int (*write)(struct kea_stream*, const char *buf, unsigned len);
 };
 
-int kea_register_stream(struct kea_stream *stream);
+int kea_register_stream(struct kea_stream *stream, void *custom_buf, unsigned custom_buf_len);
 void kea_register_clear_all_streams(void);
 
 #ifndef CONFIG_KEA_MAX_NUM_STREAMS
@@ -26,5 +28,8 @@ void kea_register_clear_all_streams(void);
 #define KEA_PRTOCOL_VERSION 0
 
 void kea_process(void);
+
+#include "kea/kea_cmds.h"
+#include "kea/kea_model.h"
 
 #endif /* __KEA_PUBLIC_IF_H */
