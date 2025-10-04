@@ -21,7 +21,10 @@ FetchContent_MakeAvailable(googletest)
 # Add your test source files here
 add_executable(my_tests
     test_main.cpp
-    test_model_gen.cpp)
+    test_stream.cpp
+    test_model_schema.cpp
+    test_util_model_gen.cpp
+    test_util_stream.cpp)
 
 target_include_directories(my_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

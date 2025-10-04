@@ -2,6 +2,7 @@
 #define __KEA_MODEL_PUBLIC_IF_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 #define MODEL_HASH_SZ (8)
 
@@ -15,9 +16,31 @@ enum kea_data_types {
     KEA_TYPE_UINT32,
     KEA_TYPE_INT64,
     KEA_TYPE_UINT64,
+    KEA_TYPE_FLOAT,
+    KEA_TYPE_DOUBLE,
     KEA_TYPE_STRING,
     KEA_TYPE_STRUCT,
     KEA_TYPE_BINARY
+};
+
+/* Lookup array mapping enum kea_data_types to size in bytes.
+ * For types with variable size (STRING, STRUCT, BINARY), use 0.
+ */
+static const unsigned char kea_data_type_sizes[] = {
+    0,                          /* KEA_TYPE_UNDEFINED */
+    sizeof(int8_t),             /* KEA_TYPE_INT8 */
+    sizeof(uint8_t),            /* KEA_TYPE_UINT8 */
+    sizeof(int16_t),            /* KEA_TYPE_INT16 */
+    sizeof(uint16_t),           /* KEA_TYPE_UINT16 */
+    sizeof(int32_t),            /* KEA_TYPE_INT32 */
+    sizeof(uint32_t),           /* KEA_TYPE_UINT32 */
+    sizeof(int64_t),            /* KEA_TYPE_INT64 */
+    sizeof(uint64_t),           /* KEA_TYPE_UINT64 */
+    sizeof(float),              /* KEA_TYPE_FLOAT */
+    sizeof(double),             /* KEA_TYPE_DOUBLE */
+    0,                          /* KEA_TYPE_STRING (variable size) */
+    0,                          /* KEA_TYPE_STRUCT (variable size) */
+    0                           /* KEA_TYPE_BINARY (variable size) */
 };
 
 enum kea_data_collection_types {
@@ -31,7 +54,7 @@ enum kea_data_collection_types {
 struct kea_obj_access_hdr;
 
 struct kea_model_hdr {
-    unsigned model_id;
+    uint16_t model_id;
     const char *name;
     unsigned char hash[MODEL_HASH_SZ];
     unsigned char num_static_objs;
@@ -102,5 +125,6 @@ struct kea_model_iter {
 int kea_model_get_next_free_model_id(void);
 int kea_model_register(struct kea_model_hdr *model, bool use_first_free_id);
 unsigned char kea_get_num_registered_models(void);
+void kea_clear_all_models(void);
 
 #endif /* __KEA_MODEL_PUBLIC_IF_H */

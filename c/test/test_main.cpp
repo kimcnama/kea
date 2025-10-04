@@ -6,51 +6,7 @@ extern "C" {
     #include "kea/kea_model.h"
 }
 
-#include "test_model_gen.hpp"
-
-static int stream_read(struct kea_stream* stream, char *buf, unsigned buf_size)
-{
-    printf("Reading from stream (%s)\n", stream->metadata);
-    memcpy(buf, stream->metadata, strlen(stream->metadata));
-    return strlen(stream->metadata);
-}
-
-static int stream_write(struct kea_stream* stream, const char *buf, unsigned len)
-{
-    printf("Writing to stream (%s): %.*s\n", stream->metadata, len, buf);
-    return len;
-}
-
-// A simple test case
-TEST(SampleTest, StremRegister) {
-    
-    int i;
-    int rc;
-
-    struct kea_stream stream1 = {
-        .metadata = "stream1",
-        .priv_data = nullptr,
-        .read = nullptr,
-        .write = nullptr
-    };
-    
-    rc = kea_register_stream(nullptr, nullptr, 0);
-    EXPECT_EQ(rc, -EINVAL);
-    rc = kea_register_stream(&stream1, nullptr, 0);
-    EXPECT_EQ(rc, -EINVAL);
-    stream1.read = stream_read;
-    rc = kea_register_stream(&stream1, nullptr, 0);
-    EXPECT_EQ(rc, -EINVAL);
-    stream1.write = stream_write;
-
-    for (i = 0; i < CONFIG_KEA_MAX_NUM_STREAMS; ++i) {
-        rc = kea_register_stream(&stream1, nullptr, 0);
-        EXPECT_EQ(rc, 0);
-    }
-
-    rc = kea_register_stream(&stream1, nullptr, 0);
-    EXPECT_EQ(rc, -ENOMEM);
-}
+#include "test_util_model_gen.hpp"
 
 struct stream_priv_data {
     unsigned resp_len;
@@ -108,7 +64,7 @@ struct kea_model_hdr test_model = {
 };
 
 
-TEST(SampleTest, GetAllModels) {
+TEST(GetAllModels, test_get_all_models) {
     
     int i ,rc;
     struct stream_priv_data priv_data1 = {0};
@@ -120,14 +76,11 @@ TEST(SampleTest, GetAllModels) {
         .write = get_all_models_stream_write
     };
     
-    unsigned num_expected_models = 0;
+    constexpr unsigned num_expected_models = 3;
     TestModelGen model_gen;
-    model_gen.addModel(2, 0); ++num_expected_models;
-    model_gen.addModel(3, 6); ++num_expected_models;
-    model_gen.addModel(8, 16); ++num_expected_models;
-
-    for (i = 0; i < model_gen.m_models.size(); ++i) {
-        rc = kea_model_register(model_gen.m_models[i], false);
+    for (i = 1; i <= num_expected_models; ++i) {
+        auto &m = model_gen.addModel(i * i, i * i);
+        rc = kea_model_register(&m.m_hdr, false);
         EXPECT_EQ(rc, 0);
     }
 
@@ -143,6 +96,10 @@ TEST(SampleTest, GetAllModels) {
     for (i = 0; i < num_models; ++i) {
         printf("Model %d: ID=%d, Name=%.*s\n", i, models_info[i]->model_id,
                models_info[i]->name_len, models_info[i]->name);
+        
+        EXPECT_EQ(models_info[i]->model_id, model_gen.getModel(i).getModelId());
+        EXPECT_EQ(models_info[i]->name_len, model_gen.getModel(i).getModelName().size());
+        EXPECT_EQ(strncmp(models_info[i]->name, model_gen.getModel(i).getModelName().c_str(), models_info[i]->name_len), 0);
     }
     
     EXPECT_EQ(num_models, num_expected_models);

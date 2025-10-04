@@ -10,6 +10,7 @@ struct kea_stream {
     void *priv_data;
     char *stream_buf;
     unsigned stream_buf_size;
+    unsigned cur_buf_offset;
     int (*read)(struct kea_stream*, char *buf, unsigned buf_size);
     int (*write)(struct kea_stream*, const char *buf, unsigned len);
 };
@@ -24,6 +25,10 @@ void kea_register_clear_all_streams(void);
 #ifndef CONFIG_KEA_MAX_REQ_BUF_SIZE
 #define CONFIG_KEA_MAX_REQ_BUF_SIZE 256
 #endif /* CONFIG_KEA_MAX_REQ_BUF_SIZE */
+
+#ifndef CONFIG_KEA_DEFAULT_RSP_BUF_SIZE
+#define CONFIG_KEA_DEFAULT_RSP_BUF_SIZE 256
+#endif /* CONFIG_KEA_DEFAULT_RSP_BUF_SIZE */
 
 #define KEA_PRTOCOL_VERSION 0
 

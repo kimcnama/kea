@@ -46,10 +46,12 @@ unsigned char kea_get_num_registered_models(void)
 
 struct kea_model_hdr *kea_model_get(unsigned model_id)
 {
+    struct kea_model_hdr *p;
     if (model_id == 0 || model_id > MAX_MODELS)
         return NULL;
     
-    return mgr.registered_models[model_id - 1];
+    p = mgr.registered_models[model_id - 1];
+    return p;
 }
 
 int kea_model_get_next_free_model_id(void)
@@ -85,8 +87,13 @@ int kea_model_register(struct kea_model_hdr *model, bool use_first_free_id)
     return 0;
 }
 
-int kea_model_mgr_init(void)
+void kea_clear_all_models(void)
 {
     memset(&mgr, 0x0, sizeof(mgr));
+}
+
+int kea_model_mgr_init(void)
+{
+    kea_clear_all_models();
     return 0;
 }
